@@ -50,3 +50,9 @@ class LeadGenerationResult(BaseModel):
     source_selection: SourceSelection
     candidates: list[CompanyCandidate]
     total_found: int
+
+
+class LeadGenerationResponse(BaseModel):
+    status: Literal["ok", "fail"]
+    data: LeadGenerationResult | None = None
+    detail: str | None = None

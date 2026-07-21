@@ -105,6 +105,33 @@ for c in result.candidates:
 
 ## 输出字段
 
+成功时响应：
+
+```json
+{
+  "status": "ok",
+  "data": {
+    "request": { ... },
+    "source_selection": { ... },
+    "candidates": [ ... ],
+    "total_found": 10
+  },
+  "detail": null
+}
+```
+
+失败时响应：
+
+```json
+{
+  "status": "fail",
+  "data": null,
+  "detail": "错误信息"
+}
+```
+
+`data.candidates` 中每个 candidate 的字段：
+
 | 字段 | 说明 |
 |------|------|
 | `place_id` | Google Maps place ID 或 LinkedIn company ID |
