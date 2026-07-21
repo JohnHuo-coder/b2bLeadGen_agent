@@ -47,28 +47,43 @@ APIFY_API_TOKEN=apify_api_xxxxxxxx
 
 可选：设置 `OPENAI_API_KEY` 让 agent 对复杂/niche 描述做更智能的数据源选择。
 
-### 3. 运行
+### 3. 启动服务
 
 ```bash
-# AI startup → LinkedIn
-python main.py -t "AI startup" -l "San Francisco, USA" -n 10
+# 开发模式
+python main.py
 
-# Luxury hotel → Google Maps
-python main.py -t "Luxury hotel" -l "New York, USA" -n 20
-
-# Medical device manufacturer → LinkedIn
-python main.py -t "Medical device manufacturer" -l "Boston, USA" -n 15
-
-# Coworking space → Google Maps
-python main.py -t "Coworking space" -l "Austin, USA" -n 10
-
-# 带 LinkedIn 行业 ID filter（可选，直接传 code）
-python main.py -t "AI startup" -l "San Francisco, USA" --industry "4" -n 10
-python main.py -t "startup" -l "San Francisco" --industry "4,13" -n 10
-
-# JSON 输出
-python main.py -t "Precision machining company" -l "Detroit, USA" -n 10 --json
+# 或
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+服务启动后访问 http://localhost:8000/docs 查看 Swagger UI。
+
+### 4. 调用 API
+
+```bash
+# Health check
+curl http://localhost:8000/health
+
+# 生成 leads
+curl -X POST http://localhost:8000/leads/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_company": "AI startup",
+    "location": "San Francisco, USA",
+    "company_count": 10,
+    "industry": [4]
+  }'
+```
+
+请求体字段：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `target_company` | string | 是 | 目标公司描述 / 搜索关键词 |
+| `location` | string | 是 | 地区 |
+| `company_count` | int | 是 | 数量（1–1000） |
+| `industry` | list[int] | 否 | LinkedIn industry ID codes |
 
 ### Python API
 
@@ -81,7 +96,7 @@ result = agent.run(LeadRequest(
     target_company="AI startup",
     location="San Francisco, USA",
     company_count=10,
-    industry="4",  # optional LinkedIn industry ID code
+    industry=[4],  # optional LinkedIn industry ID codes
 ))
 
 for c in result.candidates:
@@ -92,6 +107,7 @@ for c in result.candidates:
 
 | 字段 | 说明 |
 |------|------|
+| `place_id` | Google Maps place ID 或 LinkedIn company ID |
 | `company_name` | 公司名称 |
 | `website` | 公司网站 |
 | `source` | 数据来源 (`google_maps` / `linkedin`) |
@@ -104,14 +120,13 @@ for c in result.candidates:
 
 默认只用 `target_company` 作为 `searchQuery` 搜索，不传 industry filter。
 
-如果用户知道 LinkedIn industry ID，可以直接传入 code：
+如果用户知道 LinkedIn industry ID，可以传入整数列表：
 
-```bash
-python main.py -t "startup" -l "San Francisco" --industry "4" -n 10
-python main.py -t "startup" -l "San Francisco" --industry "4,13" -n 10
+```json
+{ "industry": [4, 13] }
 ```
 
-`--industry` 的值会原样传给 LinkedIn scraper 的 `industryIds` 参数，支持逗号分隔多个 ID。
+Python / API 中 `industry` 类型为 `list[int] | None`。传给 Apify 时会转为 string array（Apify schema 要求 `"4"` 而非 `4`）。
 
 Industry ID 对照表见 [LinkedIn Industry Codes](https://github.com/HarvestAPI/linkedin-industry-codes-v2/blob/main/linkedin_industry_code_v2_all_eng_with_header.csv)。
 
@@ -145,7 +160,10 @@ GPT 理解自然语言描述，选择最优数据源并微调搜索词。
 
 ```
 b2bleadgen_agent/
-├── main.py
+├── main.py                  # FastAPI 后端入口
+├── Procfile                 # Railway / Heroku 启动命令
+├── railway.toml             # Railway 部署配置
+├── runtime.txt              # Python 版本
 ├── src/
 │   ├── agent.py
 │   ├── source_selector.py      # 数据源选择
@@ -154,6 +172,49 @@ b2bleadgen_agent/
 │       ├── google_maps.py
 │       └── linkedin.py
 ```
+
+## 部署到 Railway
+
+项目已包含 `Procfile`、`railway.toml` 和 `runtime.txt`，可直接部署。
+
+### 1. 连接 GitHub 仓库
+
+1. 打开 [Railway](https://railway.com/) → **New Project** → **Deploy from GitHub repo**
+2. 选择 `JohnHuo-coder/b2bLeadGen_agent`
+3. Railway 会自动检测 Python 项目并安装 `requirements.txt`
+
+### 2. 配置环境变量
+
+在 Railway 项目的 **Variables** 中添加：
+
+| 变量 | 必填 | 说明 |
+|------|------|------|
+| `APIFY_API_TOKEN` | 是 | Apify API Token |
+| `OPENAI_API_KEY` | 否 | LLM 增强数据源选择 |
+| `OPENAI_MODEL` | 否 | 默认 `gpt-4o-mini` |
+
+### 3. 部署
+
+Push 到 `main` 分支后 Railway 会自动重新部署。部署完成后会分配一个 public URL，例如：
+
+```
+https://your-app.up.railway.app/health
+https://your-app.up.railway.app/docs
+```
+
+### 4. 调用
+
+```bash
+curl -X POST https://your-app.up.railway.app/leads/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "target_company": "AI startup",
+    "location": "San Francisco, USA",
+    "company_count": 10
+  }'
+```
+
+> **注意：** `/leads/generate` 会调用 Apify scraper，可能需要几十秒到数分钟。Railway 健康检查走 `/health`（已在 `railway.toml` 配置）。
 
 ## 费用说明
 

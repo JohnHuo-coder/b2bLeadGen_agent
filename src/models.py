@@ -17,14 +17,15 @@ class LeadRequest(BaseModel):
     )
     location: str = Field(..., description="Geographic location, e.g. 'San Francisco, USA'")
     company_count: int = Field(..., ge=1, le=1000, description="Number of companies to find")
-    industry: str | None = Field(
+    industry: list[int] | None = Field(
         None,
-        description="Optional LinkedIn industry ID code(s), e.g. '4' or '4,13'. "
+        description="Optional LinkedIn industry ID codes, e.g. [4, 13]. "
         "Only used when searching via LinkedIn.",
     )
 
 
 class CompanyCandidate(BaseModel):
+    place_id: str | None = None
     company_name: str
     website: str | None = None
     source: Literal["google_maps", "linkedin"]
@@ -41,7 +42,7 @@ class SourceSelection(BaseModel):
     reasoning: str
     google_maps_search_term: str | None = None
     linkedin_search_query: str | None = None
-    linkedin_industry_ids: list[str] = Field(default_factory=list)
+    linkedin_industry_ids: list[int] = Field(default_factory=list)
 
 
 class LeadGenerationResult(BaseModel):

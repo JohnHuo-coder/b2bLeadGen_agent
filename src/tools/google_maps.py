@@ -34,8 +34,10 @@ def scrape_google_maps(
         if not name:
             continue
 
+        place_id = item.get("placeId") or item.get("place_id")
         candidates.append(
             CompanyCandidate(
+                place_id=str(place_id) if place_id is not None else None,
                 company_name=name,
                 website=item.get("website") or item.get("domain"),
                 source="google_maps",

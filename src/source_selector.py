@@ -55,10 +55,8 @@ def select_sources(request: LeadRequest, mapper: IndustryMapper | None = None) -
     return _select_with_rules(request, mapper)
 
 
-def _resolve_industry_ids(request: LeadRequest) -> list[str]:
-    if not request.industry:
-        return []
-    return [code.strip() for code in request.industry.split(",") if code.strip()]
+def _resolve_industry_ids(request: LeadRequest) -> list[int]:
+    return request.industry or []
 
 
 def _select_with_rules(request: LeadRequest, mapper: IndustryMapper) -> SourceSelection:

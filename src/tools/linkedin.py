@@ -12,19 +12,20 @@ def scrape_linkedin_companies(
     search_query: str,
     location: str,
     max_results: int,
-    industry_ids: list[str] | None = None,
+    industry_ids: list[int] | None = None,
 ) -> list[CompanyCandidate]:
     """Run Apify LinkedIn Company Search and return normalized candidates."""
     client = ApifyClient(get_apify_token())
 
     run_input: dict = {
-        "scraperMode": "short",
+        "scraperMode": "full",
         "maxItems": max_results,
         "searchQuery": search_query,
         "locations": [location],
     }
     if industry_ids:
-        run_input["industryIds"] = industry_ids
+        # Apify schema expects industryIds as string array, e.g. ["4", "13"]
+        run_input["industryIds"] = [str(industry_id) for industry_id in industry_ids]
 
     run = client.actor(LINKEDIN_COMPANY_ACTOR_ID).call(run_input=run_input)
     dataset_id = run["defaultDatasetId"]
@@ -39,8 +40,10 @@ def scrape_linkedin_companies(
         if isinstance(employee_count, str) and employee_count.isdigit():
             employee_count = int(employee_count)
 
+        place_id = item.get("id")
         candidates.append(
             CompanyCandidate(
+                place_id=str(place_id) if place_id is not None else None,
                 company_name=name,
                 website=item.get("website"),
                 source="linkedin",
