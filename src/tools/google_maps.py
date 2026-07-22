@@ -6,6 +6,7 @@ from apify_client import ApifyClient
 
 from src.config import GOOGLE_MAPS_ACTOR_ID, get_apify_token
 from src.models import CompanyCandidate
+from src.tools.apify_utils import get_default_dataset_id
 
 
 def scrape_google_maps(
@@ -26,7 +27,7 @@ def scrape_google_maps(
     }
 
     run = client.actor(GOOGLE_MAPS_ACTOR_ID).call(run_input=run_input)
-    dataset_id = run["defaultDatasetId"]
+    dataset_id = get_default_dataset_id(run)
 
     candidates: list[CompanyCandidate] = []
     for item in client.dataset(dataset_id).iterate_items():
