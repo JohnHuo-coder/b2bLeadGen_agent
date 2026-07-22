@@ -37,9 +37,11 @@ def scrape_linkedin_companies(
         if not name:
             continue
 
-        employee_count = item.get("employeeCount")
-        if isinstance(employee_count, str) and employee_count.isdigit():
-            employee_count = int(employee_count)
+        employee_count = _parse_employee_count(item.get("employeeCount"))
+        range_start, range_end = _parse_employee_count_range(item.get("employeeCountRange"))
+        company_type = item.get("companyType")
+        if not isinstance(company_type, str) or not company_type.strip():
+            company_type = None
 
         place_id = item.get("id")
         candidates.append(
@@ -50,7 +52,10 @@ def scrape_linkedin_companies(
                 source="linkedin",
                 linkedin_url=item.get("linkedinUrl") or item.get("url"),
                 industry=_extract_industry(item),
-                employee_count=employee_count if isinstance(employee_count, int) else None,
+                employee_count=employee_count,
+                employee_count_range_start=range_start,
+                employee_count_range_end=range_end,
+                company_type=company_type,
                 description=item.get("tagline") or item.get("description"),
             )
         )
@@ -59,6 +64,45 @@ def scrape_linkedin_companies(
             break
 
     return candidates
+
+
+def _parse_employee_count(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if not value.isdigit():
+            return None
+        value = int(value)
+    if isinstance(value, (int, float)):
+        count = int(value)
+        if count <= 0:
+            return None
+        return count
+    return None
+
+
+def _parse_employee_count_range(value: object) -> tuple[int | None, int | None]:
+    if not isinstance(value, dict):
+        return None, None
+
+    start = _parse_range_bound(value.get("start"))
+    end = _parse_range_bound(value.get("end"))
+    return start, end
+
+
+def _parse_range_bound(value: object) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if not value.isdigit():
+            return None
+        value = int(value)
+    if isinstance(value, (int, float)):
+        bound = int(value)
+        if bound <= 0:
+            return None
+        return bound
+    return None
 
 
 def _extract_industry(item: dict) -> str | None:

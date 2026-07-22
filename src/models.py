@@ -34,6 +34,9 @@ class CompanyCandidate(BaseModel):
     linkedin_url: str | None = None
     industry: str | None = None
     employee_count: int | None = None
+    employee_count_range_start: int | None = None
+    employee_count_range_end: int | None = None
+    company_type: str | None = None
     description: str | None = None
 
 
