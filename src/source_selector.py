@@ -42,9 +42,37 @@ Respond with JSON only:
 """
 
 
+def _sources_from_selected(selected: str) -> list[str]:
+    if selected == "both":
+        return ["google_maps", "linkedin"]
+    return [selected]
+
+
+def _select_from_preselected(
+    request: LeadRequest, mapper: IndustryMapper
+) -> SourceSelection:
+    sources = _sources_from_selected(request.selected_source)  # type: ignore[arg-type]
+    industry_ids = _resolve_industry_ids(request)
+    gm_term, li_query = mapper.build_search_terms(request.target_company)
+    reasoning = f"Using pre-selected source: {request.selected_source}."
+    if industry_ids:
+        reasoning += f" LinkedIn industry filter: {industry_ids}."
+
+    return SourceSelection(
+        sources=sources,  # type: ignore[arg-type]
+        reasoning=reasoning,
+        google_maps_search_term=gm_term if "google_maps" in sources else None,
+        linkedin_search_query=li_query if "linkedin" in sources else None,
+        linkedin_industry_ids=industry_ids,
+    )
+
+
 def select_sources(request: LeadRequest, mapper: IndustryMapper | None = None) -> SourceSelection:
     """Pick data source(s) and search parameters for the given request."""
     mapper = mapper or IndustryMapper()
+
+    if request.selected_source is not None:
+        return _select_from_preselected(request, mapper)
 
     if get_openai_api_key():
         try:

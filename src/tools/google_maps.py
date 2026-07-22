@@ -24,6 +24,7 @@ def scrape_google_maps(
         "language": "en",
         "skipClosedPlaces": True,
         "scrapePlaceDetailPage": False,
+        "website": "withWebsite",
     }
 
     run = client.actor(GOOGLE_MAPS_ACTOR_ID).call(run_input=run_input)
@@ -36,6 +37,9 @@ def scrape_google_maps(
             continue
 
         place_id = item.get("placeId") or item.get("place_id")
+        item_location = item.get("location") or {}
+        lat = item_location.get("lat")
+        lon = item_location.get("lng")
         candidates.append(
             CompanyCandidate(
                 place_id=str(place_id) if place_id is not None else None,
@@ -44,6 +48,8 @@ def scrape_google_maps(
                 source="google_maps",
                 address=item.get("address") or item.get("street"),
                 phone=item.get("phone") or item.get("phoneUnformatted"),
+                lat=float(lat) if lat is not None else None,
+                lon=float(lon) if lon is not None else None,
                 industry=item.get("categoryName") or item.get("category"),
             )
         )

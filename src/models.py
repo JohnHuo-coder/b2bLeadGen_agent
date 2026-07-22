@@ -1,13 +1,6 @@
-from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
-
-
-class DataSource(str, Enum):
-    GOOGLE_MAPS = "google_maps"
-    LINKEDIN = "linkedin"
-    BOTH = "both"
 
 
 class LeadRequest(BaseModel):
@@ -22,6 +15,11 @@ class LeadRequest(BaseModel):
         description="Optional LinkedIn industry ID codes, e.g. [4, 13]. "
         "Only used when searching via LinkedIn.",
     )
+    selected_source: Literal["google_maps", "linkedin", "both"] | None = Field(
+        None,
+        description="Optional pre-selected data source. When set, skips source inference "
+        "and uses this source directly. When null, sources are inferred automatically.",
+    )
 
 
 class CompanyCandidate(BaseModel):
@@ -31,6 +29,8 @@ class CompanyCandidate(BaseModel):
     source: Literal["google_maps", "linkedin"]
     address: str | None = None
     phone: str | None = None
+    lat: float | None = None
+    lon: float | None = None
     linkedin_url: str | None = None
     industry: str | None = None
     employee_count: int | None = None
